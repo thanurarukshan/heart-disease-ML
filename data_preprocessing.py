@@ -1,32 +1,33 @@
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 
-def preprocess_data(csv_path: str):
-    df = pd.read_csv(csv_path)
+def preprocess_data(file_path):
+    df = pd.read_csv(file_path)
 
-    # Fill missing values
-    df.fillna(df.mean(numeric_only=True), inplace=True)
+    # Handle missing values (you can do more sophisticated imputation too)
+    df = df.dropna()
 
-    # Label Encoding
-    label_cols = ['Gender', 'Smoking', 'Diabetes', 'Heart Disease Status', 
-                  'High Blood Pressure', 'Low HDL Cholesterol', 
-                  'High LDL Cholesterol', 'Family Heart Disease']
-    for col in label_cols:
-        df[col] = LabelEncoder().fit_transform(df[col])
-    
-    # One-hot encoding
-    df = pd.get_dummies(df, columns=['Exercise Habits', 'Stress Level'], drop_first=True)
-
-    # Scale numerical features
-    num_cols = ['Age', 'Blood Pressure', 'Cholesterol Level', 'BMI',
-                'Triglyceride Level', 'Fasting Blood Sugar', 
-                'CRP Level', 'Homocysteine Level', 'Sleep Hours']
-    scaler = StandardScaler()
-    df[num_cols] = scaler.fit_transform(df[num_cols])
-
-    # Feature/Target split
+    # Separate features and target
     X = df.drop("Heart Disease Status", axis=1)
     y = df["Heart Disease Status"]
 
-    return train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    # Encode target (Yes/No → 1/0)
+    y = y.map({"Yes": 1, "No": 0})
+
+    # Identify categorical columns
+    cat_cols = X.select_dtypes(include="object").columns
+
+    # Apply Label Encoding to each categorical column
+    label_encoders = {}
+    for col in cat_cols:
+        le = LabelEncoder()
+        X[col] = le.fit_transform(X[col])
+        label_encoders[col] = le  # Save for future inverse transform if needed
+
+    # Split the data
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    return X_train, X_test, y_train, y_test
